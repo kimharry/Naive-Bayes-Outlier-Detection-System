@@ -2,12 +2,55 @@ import os
 import sys
 import argparse
 import logging
+from math import exp, pi, sqrt
 
 def training(instances, labels):
-    pass
+    dataset = {}
+    for i in range(len(instances)):
+        label = labels[i]
+        if label not in dataset:
+            dataset[label] = []
+        dataset[label].append(instances[i])
+
+    logging.debug("dataset: {}".format(dataset))
+
+    parameters = {}
+    for label, instances in dataset.items():
+        parameters[label] = []
+        for i in range(len(instances[0])):
+            mean = sum([instance[i] for instance in instances]) / len(instances)
+            stdev = sqrt(sum([(instance[i] - mean) ** 2 for instance in instances]) / len(instances))
+            parameters[label].append((mean, stdev, len(instances)))
+
+    logging.debug("parameters: {}".format(parameters))
+    
+    return parameters
+
+def calculate_probability(x, mean, stdev):
+	exponent = exp(-((x-mean)**2 / (2 * stdev**2 )))
+	return (1 / (sqrt(2 * pi) * stdev)) * exponent
 
 def predict(instance, parameters):
-    pass
+    probabilities = {}
+    for label, params in parameters.items():
+        probabilities[label] = 1
+        for i in range(len(params)):
+            mean, stdev, _ = params[i]
+            x = instance[i]
+            logging.debug("mean: {}, stdev: {}, x: {}".format(mean, stdev, x))
+            probabilities[label] *= calculate_probability(x, mean, stdev)
+    
+    best_label = None
+    best_prob = -1
+    for label, prob in probabilities.items():
+        if prob > best_prob:
+            best_label = label
+            best_prob = prob
+
+    logging.debug("probabilities: {}".format(probabilities))
+    logging.debug("best_label: {}".format(best_label))
+
+    return best_label
 
 def report(predictions, answers):
     if len(predictions) != len(answers):
@@ -62,7 +105,7 @@ def load_raw_data(fname):
             tmp[6] = int(tmp[6])
             tmp[7] = float(tmp[7])
             tmp[8] = int(tmp[8])
-            instances.append(tmp[:-1])
+            instances.append(tmp[1:-1])
             labels.append(tmp[-1])
     return instances, labels
 
